@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+build/
+*.egg-info
+solidity/*.json
+solidity/*.bin
