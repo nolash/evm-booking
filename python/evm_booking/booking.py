@@ -37,17 +37,18 @@ class Booking(TxFactory):
     __abi = None
     __bytecode = None
 
-    def constructor(self, sender_address, cap, tx_format=TxFormat.JSONRPC, version=None):
-        code = self.cargs(cap, version=version)
+    def constructor(self, sender_address, token_address, cap, tx_format=TxFormat.JSONRPC, version=None):
+        code = self.cargs(token_address, cap, version=version)
         tx = self.template(sender_address, None, use_nonce=True)
         tx = self.set_code(tx, code)
         return self.finalize(tx, tx_format)
 
 
     @staticmethod
-    def cargs(cap, version=None):
+    def cargs(token_address, cap, version=None):
         code = Booking.bytecode(version=version)
         enc = ABIContractEncoder()
+        enc.address(token_address)
         enc.uint256(cap)
         args = enc.get()
         code += args
@@ -79,13 +80,15 @@ class Booking(TxFactory):
         return Booking.__bytecode
 
     
-    def reserve(self, contract_address, sender_address, offset, count, tx_format=TxFormat.JSONRPC, id_generator=None):
+    def reserve(self, contract_address, sender_address, offset, count, share=False, tx_format=TxFormat.JSONRPC, id_generator=None):
         enc = ABIContractEncoder()
         enc.method('reserve')
         enc.typ(ABIContractType.UINT256)
         enc.typ(ABIContractType.UINT256)
+        enc.typ(ABIContractType.BOOLEAN)
         enc.uint256(offset)
         enc.uint256(count)
+        enc.uint256(share)
         data = add_0x(enc.get())
         tx = self.template(sender_address, contract_address, use_nonce=True)
         tx = self.set_code(tx, data)

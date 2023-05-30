@@ -18,7 +18,8 @@ from evm_booking import Booking
 
 logg = logging.getLogger(__name__)
 
-class TestBooking(EthTesterCase): #TestGiftableToken):
+#class TestBooking(EthTesterCase): #TestGiftableToken):
+class TestBooking(TestGiftableToken):
 
     expire = 0
 
@@ -27,15 +28,17 @@ class TestBooking(EthTesterCase): #TestGiftableToken):
 
         self.alice = self.accounts[1]
         self.bob = self.accounts[2]
+        self.token_address = self.address
 
 
     def publish(self, resolution=366*24):
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
         c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
-        (tx_hash, o) = c.constructor(self.accounts[0], resolution)
+        (tx_hash, o) = c.constructor(self.accounts[0], self.token_address, resolution)
         self.rpc.do(o)
         o = receipt(tx_hash)
         r = self.rpc.do(o)
         self.assertEqual(r['status'], 1)
         self.address = to_checksum_address(r['contract_address'])
-        logg.debug('published booker on address {} with hash {}'.format(self.address, tx_hash))
+        self.booking_address = self.address
+        logg.debug('published booker on address {} with hash {}'.format(self.booking_address, tx_hash))

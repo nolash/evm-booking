@@ -7,20 +7,67 @@ pragma solidity ^0.8.0;
 
 
 contract ERC20Book {
+	address token;
 	bytes slots;
-	uint256 cap;
+	bytes sharedSlots;
+	uint256 public capacity;
+	uint256 public totalSupply;
+	uint256 public shareCount;
+	mapping ( address => uint256 ) shares;
 
-	constructor (uint256 _resolution) {
+	constructor (address _token, uint256 _resolution) {
 		require(_resolution > 0 && _resolution < (1 << 128), "ERR_NONSENSE");
 		uint256[2] memory r;
 
 		r = getPos(_resolution);
 		slots = new bytes(r[0] + 1);
-		cap = _resolution;
+		sharedSlots = new bytes(r[0] + 1);
+		capacity = _resolution;
+		totalSupply = capacity;
+		token = _token;
+	}
+
+	function deposit(address _spender) public returns (int256) {
+		uint256 l_unit;
+		uint256 l_supply;
+		uint256 l_limit;
+		int256 l_value;
+		bool r;
+		bytes memory v;
+		
+		l_supply = totalSupply;
+		require(l_supply >= totalSupply, "ERR_SUPPLY_UNDERFLOW");
+
+		l_unit = l_supply / totalSupply;
+		l_limit = shareCount * l_unit;
+		if (l_limit == shares[_spender]) {
+			return 0;
+		}
+
+		l_value = int256(l_limit) - int256(shares[_spender]);
+		if (l_limit > shares[_spender]) {
+			(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', _spender, this, uint256(l_value)));
+			require(r, "ERR_TOKEN");
+		}
+
+		shares[_spender] = l_limit;
+		return l_value;
+	}
+
+	function tokenSupply() internal returns (uint256) {
+		bool r;
+		bytes memory v;
+		uint256 l_supply;
+
+		(r, v) = token.call(abi.encodeWithSignature('totalSupply()'));
+		require(r, "ERR_TOKEN");
+		l_supply = abi.decode(v, (uint256));
+
+		return l_supply;
 	}
 
 	// improve by comparing word by word
-	function reserve(uint256 _offset, uint256 _count) public {
+	function reserve(uint256 _offset, uint256 _count, bool _share) public {
 		require(_count > 0, "ERR_ZEROCOUNT");
 		uint256[2] memory c;
 		uint256 cy;
@@ -30,19 +77,26 @@ contract ERC20Book {
 		cy = c[0];
 		ci = uint8(1 << (uint8(c[1])));
 		for (uint256 i = 0; i < _count; i++) {
-			require(cap > 0, "ERR_CAPACITY");
-			if (uint8(slots[cy]) & ci > 0) {
-				revert("ERR_COLLISION");
+			require(capacity > 0, "ERR_CAPACITY");
+			require(slotAvailable(cy, ci), "ERR_COLLISION");
+			if (_share) {
+				sharedSlots[cy] = bytes1(uint8(sharedSlots[cy]) | ci);
+				shareCount++;
+			} else {
+				slots[cy] = bytes1(uint8(slots[cy]) | ci);
 			}
-			slots[cy] = bytes1(uint8(slots[cy]) | ci);
 			if (ci == 128) {
 				cy++;
 				ci = 1;
 			} else {
 				ci <<= 1;
 			}
-			cap--;
+			capacity--;
 		}
+	}
+
+	function slotAvailable(uint256 _byte, uint8 _bitVal) internal view returns (bool) {
+		return (uint8(slots[_byte]) | uint8(sharedSlots[_byte])) & _bitVal == 0;
 	}
 
 	function getPos(uint256 bit) internal pure returns (uint256[2] memory) {
