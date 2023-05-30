@@ -7,13 +7,16 @@ pragma solidity ^0.8.0;
 
 
 contract ERC20Book {
-	address token;
+	// Implements ERC173
+	address public owner;
+	address public token;
 	bytes slots;
 	bytes sharedSlots;
 	uint256 public capacity;
 	uint256 public totalSupply;
 	uint256 public shareCount;
 	mapping ( address => uint256 ) shares;
+	mapping ( address => bool ) writers;
 
 	constructor (address _token, uint256 _resolution) {
 		require(_resolution > 0 && _resolution < (1 << 128), "ERR_NONSENSE");
@@ -25,33 +28,66 @@ contract ERC20Book {
 		capacity = _resolution;
 		totalSupply = capacity;
 		token = _token;
+		owner = msg.sender;
+	}
+
+	// Implements Writer
+	function addWriter(address _writer) public returns (bool) {
+		require(msg.sender == owner, "ERR_AXX");
+		writers[_writer] = true;
+		return true;
+	}
+
+	// Implements Writer
+	function removeWriter(address _writer) public returns (bool) {
+		require(msg.sender == owner || msg.sender == _writer, "ERR_AXX");
+		writers[_writer] = false;
+		return true;
+	}
+
+	// Implements Writer
+	function isWriter(address _writer) public view returns (bool) {
+		return writers[_writer] || _writer == owner;
 	}
 
 	function deposit(address _spender) public returns (int256) {
-		uint256 l_unit;
-		uint256 l_supply;
 		uint256 l_limit;
 		int256 l_value;
 		bool r;
 		bytes memory v;
-		
-		l_supply = totalSupply;
-		require(l_supply >= totalSupply, "ERR_SUPPLY_UNDERFLOW");
+		address l_sender;
+		address l_receiver;
 
-		l_unit = l_supply / totalSupply;
-		l_limit = shareCount * l_unit;
+		l_limit = shareLimit();	
 		if (l_limit == shares[_spender]) {
 			return 0;
 		}
 
 		l_value = int256(l_limit) - int256(shares[_spender]);
 		if (l_limit > shares[_spender]) {
-			(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', _spender, this, uint256(l_value)));
-			require(r, "ERR_TOKEN");
+			l_sender = _spender;
+			l_receiver = address(this);
+		} else {
+			l_sender = address(this);
+			l_receiver = _spender;
+			l_value *= -1;
 		}
+
+		(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', l_sender, l_receiver, uint256(l_value)));
+		require(r, "ERR_TOKEN");
 
 		shares[_spender] = l_limit;
 		return l_value;
+	}
+
+	function shareLimit() internal view returns(uint256) {
+		uint256 l_supply;
+		uint256 l_unit;
+
+		l_supply = totalSupply;
+		require(l_supply >= totalSupply, "ERR_SUPPLY_UNDERFLOW");
+		l_unit = l_supply / totalSupply;
+		return shareCount * l_unit;
 	}
 
 	function tokenSupply() internal returns (uint256) {
@@ -66,8 +102,17 @@ contract ERC20Book {
 		return l_supply;
 	}
 
+	function consume(uint256 _offset, uint256 _count) public {
+		reserve(_offset, _count, false);
+	}
+
+	function share(uint256 _offset, uint256 _count) public {
+		require(isWriter(msg.sender), "ERR_AXX");
+		reserve(_offset, _count, true);
+	}
+
 	// improve by comparing word by word
-	function reserve(uint256 _offset, uint256 _count, bool _share) public {
+	function reserve(uint256 _offset, uint256 _count, bool _share) internal {
 		require(_count > 0, "ERR_ZEROCOUNT");
 		uint256[2] memory c;
 		uint256 cy;
