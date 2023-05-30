@@ -79,10 +79,12 @@ class Booking(TxFactory):
         return Booking.__bytecode
 
     
-    def reserve(self, contract_address, sender_address, count, tx_format=TxFormat.JSONRPC, id_generator=None):
+    def reserve(self, contract_address, sender_address, offset, count, tx_format=TxFormat.JSONRPC, id_generator=None):
         enc = ABIContractEncoder()
-        enc.method('create')
+        enc.method('reserve')
         enc.typ(ABIContractType.UINT256)
+        enc.typ(ABIContractType.UINT256)
+        enc.uint256(offset)
         enc.uint256(count)
         data = add_0x(enc.get())
         tx = self.template(sender_address, contract_address, use_nonce=True)

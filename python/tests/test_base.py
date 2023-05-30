@@ -18,8 +18,42 @@ logg = logging.getLogger()
 
 class TestBookingBase(TestBooking):
 
+    def setUp(self):
+        super(TestBookingBase, self).setUp()
+        self.publish()
+
     def test_base(self):
-        pass
+        nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
+        c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
+        (tx_hash_hex, o) = c.reserve(self.address, self.accounts[0], 42, 13)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
+
+        (tx_hash_hex, o) = c.reserve(self.address, self.accounts[0], 42, 1)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 0)
+ 
+        (tx_hash_hex, o) = c.reserve(self.address, self.accounts[0], 42+13-1, 1)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 0)
+
+        (tx_hash_hex, o) = c.reserve(self.address, self.accounts[0], 41, 1)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
+
+        (tx_hash_hex, o) = c.reserve(self.address, self.accounts[0], 42+13, 1)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
 
 
 if __name__ == '__main__':

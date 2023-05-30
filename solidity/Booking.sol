@@ -21,38 +21,38 @@ contract ERC20Book {
 
 	// improve by comparing word by word
 	function reserve(uint256 _offset, uint256 _count) public {
+		require(_count > 0, "ERR_ZEROCOUNT");
 		uint256[2] memory c;
 		uint256 cy;
 		uint8 ci;
 
 		c = getPos(_offset);
 		cy = c[0];
-		ci = uint8(c[1]);
-
+		ci = uint8(1 << (uint8(c[1])));
 		for (uint256 i = 0; i < _count; i++) {
 			require(cap > 0, "ERR_CAPACITY");
-			if (uint8(slots[cy])  & ci > 0) {
+			if (uint8(slots[cy]) & ci > 0) {
 				revert("ERR_COLLISION");
 			}
 			slots[cy] = bytes1(uint8(slots[cy]) | ci);
-			if (ci == 7) {
+			if (ci == 128) {
 				cy++;
-				ci = 0;
+				ci = 1;
 			} else {
-				ci++;
+				ci <<= 1;
 			}
 			cap--;
 		}
 	}
 
-	function getPos(uint256 bit) internal returns (uint256[2] memory) {
+	function getPos(uint256 bit) internal pure returns (uint256[2] memory) {
 		int256 c;
 		uint256[2] memory r;
 
 		c = (int256(bit) - 1) / 8 + 1 ;
 
 		r[0] = uint256(c);
-		r[1] = r[0] % 8;
+		r[1] = bit % 8;
 		return r;
 	}
 }
