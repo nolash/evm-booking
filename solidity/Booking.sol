@@ -50,7 +50,7 @@ contract ERC20Book {
 		return writers[_writer] || _writer == owner;
 	}
 
-	function deposit(address _spender) public returns (int256) {
+	function depositFor(address _spender) public returns (int256) {
 		uint256 l_limit;
 		int256 l_value;
 		bool r;
@@ -80,11 +80,15 @@ contract ERC20Book {
 		return l_value;
 	}
 
-	function shareLimit() internal view returns(uint256) {
+	function deposit() public returns(int256) {
+		return depositFor(msg.sender);
+	}
+
+	function shareLimit() internal returns(uint256) {
 		uint256 l_supply;
 		uint256 l_unit;
 
-		l_supply = totalSupply;
+		l_supply = tokenSupply();
 		require(l_supply >= totalSupply, "ERR_SUPPLY_UNDERFLOW");
 		l_unit = l_supply / totalSupply;
 		return shareCount * l_unit;

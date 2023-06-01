@@ -15,8 +15,9 @@ from chainlib.eth.block import block_latest
 # local imports
 from evm_booking import Booking
 
-
 logg = logging.getLogger(__name__)
+
+DEFAULT_RESOLUTION = 366*24
 
 #class TestBooking(EthTesterCase): #TestGiftableToken):
 class TestBooking(TestGiftableToken):
@@ -31,7 +32,7 @@ class TestBooking(TestGiftableToken):
         self.token_address = self.address
 
 
-    def publish(self, resolution=366*24):
+    def publish(self, resolution=DEFAULT_RESOLUTION):
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
         c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
         (tx_hash, o) = c.constructor(self.accounts[0], self.token_address, resolution)
@@ -42,3 +43,6 @@ class TestBooking(TestGiftableToken):
         self.address = to_checksum_address(r['contract_address'])
         self.booking_address = self.address
         logg.debug('published booker on address {} with hash {}'.format(self.booking_address, tx_hash))
+
+        self.resolution = resolution
+        self.resolution_unit = int(self.initial_supply / self.resolution)

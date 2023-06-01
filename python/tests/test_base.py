@@ -75,5 +75,31 @@ class TestBookingBase(TestBooking):
         self.assertEqual(r['status'], 1)
 
 
+    def test_deposit_excess(self):
+        nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
+        c = ERC20(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
+        (tx_hash_hex, o) = c.approve(self.token_address, self.accounts[0], self.address, self.initial_supply)
+        self.rpc.do(o)
+
+        c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
+        (tx_hash_hex, o) = c.share(self.address, self.accounts[0], 42, 13)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
+
+        (tx_hash_hex, o) = c.deposit(self.address, self.accounts[0])
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
+
+        c = ERC20(self.chain_spec)
+        o = c.balance_of(self.token_address, self.accounts[0], sender_address=self.accounts[0])
+        r = self.rpc.do(o)
+        balance = c.parse_balance_of(r)
+        self.assertEqual(balance, self.initial_supply - (self.resolution_unit * 13))
+
+
 if __name__ == '__main__':
     unittest.main()

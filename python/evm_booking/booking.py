@@ -106,3 +106,13 @@ class Booking(TxFactory):
         tx = self.set_code(tx, data)
         tx = self.finalize(tx, tx_format, id_generator=id_generator)
         return tx
+
+
+    def deposit(self, contract_address, sender_address, tx_format=TxFormat.JSONRPC, id_generator=None):
+        enc = ABIContractEncoder()
+        enc.method('deposit')
+        data = add_0x(enc.get())
+        tx = self.template(sender_address, contract_address, use_nonce=True)
+        tx = self.set_code(tx, data)
+        tx = self.finalize(tx, tx_format, id_generator=id_generator)
+        return tx
