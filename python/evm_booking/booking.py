@@ -116,3 +116,38 @@ class Booking(TxFactory):
         tx = self.set_code(tx, data)
         tx = self.finalize(tx, tx_format, id_generator=id_generator)
         return tx
+
+
+
+    def raw(self, contract_address, count=0, offset=0, sender_address=ZERO_ADDRESS, id_generator=None, height=BlockSpec.LATEST):
+        j = JSONRPCRequest(id_generator)
+        o = j.template()
+        o['method'] = 'eth_call'
+        enc = ABIContractEncoder()
+        enc.method('raw')
+        enc.typ(ABIContractType.UINT256)
+        enc.typ(ABIContractType.UINT256)
+        enc.uint256(count)
+        enc.uint256(offset)
+        data = add_0x(enc.get())
+        tx = self.template(sender_address, contract_address)
+        tx = self.set_code(tx, data)
+        o['params'].append(self.normalize(tx))
+        height = to_blockheight_param(height)
+        o['params'].append(height)
+        o = j.finalize(o)
+        return o
+
+
+    @classmethod
+    def parse_raw(self, v):
+        v = strip_0x(v)
+        l = int(v[64:128], 16)
+        b = bytes.fromhex(v[128:])
+        c = 0
+        r = b''
+        while c < l:
+            vv = b[c:c+32]
+            r += vv
+            c += 32
+        return r[:l].hex()
