@@ -57,7 +57,6 @@ class TimeBooking(Booking):
         end_seconds = self.capacity_units * self.unit
         end_date = ref_date + datetime.timedelta(seconds=end_seconds)
         target_date = start_date + duration
-        logg.debug("ref {} {}".format(end_seconds, ref_date))
         if target_date > end_date:
             raise ValueError('duration results in {} which is beyond end date {}'.format(target_date, end_date))
 

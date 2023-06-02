@@ -19,7 +19,6 @@ logg = logging.getLogger(__name__)
 
 DEFAULT_RESOLUTION = 366*24
 
-#class TestBooking(EthTesterCase): #TestGiftableToken):
 class TestBooking(TestGiftableToken):
 
     expire = 0
