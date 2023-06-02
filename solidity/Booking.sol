@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 // Author:	Louis Holbrook <dev@holbrook.no> 0826EDA1702D1E87C6E2875121D2E7BB88C2A746
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // File-Version: 1
-// Description: Time slot booking 
+// Description: ERC20 backed time slot booking
 
 
 contract ERC20Book {
