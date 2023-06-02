@@ -1,6 +1,6 @@
 # standard imports
 import logging
-import time
+import datetime
 
 # external imports
 from chainlib.eth.unittest.ethtester import EthTesterCase
@@ -23,6 +23,7 @@ DEFAULT_RESOLUTION = 366*24
 class TestBooking(TestGiftableToken):
 
     expire = 0
+    booking_expire = datetime.datetime.utcnow() + datetime.timedelta(days=365)
 
     def setUp(self):
         super(TestBooking, self).setUp()
@@ -35,7 +36,7 @@ class TestBooking(TestGiftableToken):
     def publish(self, resolution=DEFAULT_RESOLUTION):
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
         c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
-        (tx_hash, o) = c.constructor(self.accounts[0], self.token_address, resolution)
+        (tx_hash, o) = c.constructor(self.accounts[0], self.token_address, resolution, self.booking_expire)
         self.rpc.do(o)
         o = receipt(tx_hash)
         r = self.rpc.do(o)

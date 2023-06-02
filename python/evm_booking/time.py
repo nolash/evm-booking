@@ -24,14 +24,17 @@ class TimeBooking(Booking):
         if period_seconds % resolution_seconds > 0:
             raise ValueError("period must be evenly divided in resolution")
         self.start = None
+        self.end = None
+        duration = period_seconds * resolution_seconds
         if start_seconds != None:
             self.start = datetime.datetime.fromtimestamp(start_seconds)
+            self.end = self.start + datetime.timedelta(seconds=duration + 1)
         self.unit = resolution_seconds
         self.capacity_units = int(period_seconds / resolution_seconds)
 
 
     def constructor(self, sender_address, token_address, tx_format=TxFormat.JSONRPC, version=None):
-        return super(TimeBooking, self).constructor(sender_address, token_address, self.capacity_units, tx_format=tx_format, version=version)
+        return super(TimeBooking, self).constructor(sender_address, token_address, self.capacity_units, self.end, tx_format=tx_format, version=version)
 
 
     def share_date(self, contract_address, sender_address, start_date, count, ref_date=None, tx_format=TxFormat.JSONRPC, id_generator=None):

@@ -7,7 +7,6 @@ pragma solidity ^0.8.0;
 
 
 contract ERC20Book {
-	// Implements ERC173
 	address public owner;
 	address public token;
 	bytes slots;
@@ -18,16 +17,25 @@ contract ERC20Book {
 	uint256 public shareCount;
 	mapping ( address => uint256 ) shares;
 	mapping ( address => bool ) writers;
+	uint256 public expires;
+	bool expired;
 
 	// Implements Seal
 	event SealStateChange(bool indexed _final, uint256 _sealState);
 
+	// Implements Seal
 	uint256 public sealState;
 	uint8 constant WRITER_STATE = 1;
-	uint256 constant public maxSealState = 1;
+	uint8 constant SHARE_STATE = 2;
+	uint256 constant public maxSealState = 3;
 
-	constructor (address _token, uint256 _resolution) {
+	// Implements Expire
+	event Expired(uint256 _timestamp);
+
+	constructor (address _token, uint256 _resolution, uint256 _expireTimestamp) {
 		require(_resolution > 0 && _resolution < (1 << 128), "ERR_NONSENSE");
+		require(_expireTimestamp > block.timestamp, "ERR_PAST");
+
 		uint256[2] memory r;
 
 		r = getPos(_resolution);
@@ -38,8 +46,10 @@ contract ERC20Book {
 		token = _token;
 		originalTokenSupply = tokenSupply();
 		owner = msg.sender;
+		expires = _expireTimestamp;
 	}
 
+	// Implements Seal
 	function seal(uint256 _state) public returns(uint256) {
 		require(_state < maxSealState + 1, 'ERR_INVALID_STATE');
 		require(_state & sealState == 0, 'ERR_ALREADY_LOCKED');
@@ -48,6 +58,7 @@ contract ERC20Book {
 		return uint256(sealState);
 	}
 
+	// Implements Seal
 	function isSealed(uint256 _state) public view returns(bool) {
 		require(_state < maxSealState);
 		if (_state == 0) {
@@ -85,6 +96,11 @@ contract ERC20Book {
 		bytes memory v;
 		address l_sender;
 		address l_receiver;
+
+		applyExpiry();
+		if (expired) {
+			return 0;
+		}
 
 		l_unit = unitValue();	
 		//return shareCount * l_unit;
@@ -139,10 +155,15 @@ contract ERC20Book {
 		return l_supply;
 	}
 
-	function consume(uint256 _offset, uint256 _count) public {
+	function consume(uint256 _offset, uint256 _count) public returns(bool) {
 		bool r;
 		bytes memory v;
 		uint256 l_value;
+
+		applyExpiry();
+		if (expired) {
+			return false;
+		}
 
 		l_value = unitValue() * _count;
 		(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', msg.sender, this, l_value));
@@ -151,11 +172,19 @@ contract ERC20Book {
 		require(r, "ERR_TRANSFER");
 
 		reserve(_offset, _count, false);
+		return true;
 	}
 
-	function share(uint256 _offset, uint256 _count) public {
+	function share(uint256 _offset, uint256 _count) public returns(bool) {
+		require(!isSealed(SHARE_STATE), "ERR_SEALED");
 		require(isWriter(msg.sender), "ERR_AXX");
+
+		applyExpiry();
+		if (expired) {
+			return false;
+		}
 		reserve(_offset, _count, true);
+		return true;
 	}
 
 	// improve by comparing word by word
@@ -225,5 +254,38 @@ contract ERC20Book {
 			r[i] = slots[i + l_offset] | sharedSlots[i + l_offset];
 		}
 		return r;
+	}
+
+	// Implements Expire
+	function applyExpiry() public returns(uint8) {
+		if (expires == 0) {
+			return 0;
+		}
+		if (expired) {
+			return 1;
+		}
+		if (block.timestamp >= expires) {
+			expired = true;
+			emit Expired(block.timestamp);
+			return 2;
+		}
+		return 0;
+	}
+
+	// Implements EIP165
+	function supportsInterface(bytes4 _sum) public pure returns (bool) {
+		if (_sum == 0x0d7491f8) { // Seal
+			return true;
+		}
+		if (_sum == 0xabe1f1f5) { // Writer
+			return true;
+		}
+		if (_sum == 0x841a0e94) { // Expire
+			return true;
+		}
+		if (_sum == 0x01ffc9a7) { // ERC165
+			return true;
+		}
+		return false;
 	}
 }

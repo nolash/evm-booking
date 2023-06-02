@@ -25,8 +25,8 @@ class TestBookingTime(TestGiftableToken):
         super(TestBookingTime, self).setUp()
         self.token_address = self.address
 
-        d = datetime.datetime(year=1984, month=1, day=1)
-        d = int(d.timestamp())
+        self.start = datetime.datetime(year=1984, month=1, day=1)
+        d = int(self.start.timestamp())
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
         c = TimeBooking(self.chain_spec, PERIOD_LEAPYEAR, PERIOD_HALFHOUR, start_seconds=d, signer=self.signer, nonce_oracle=nonce_oracle)
         (tx_hash, o) = c.constructor(self.accounts[0], self.token_address)
@@ -37,6 +37,15 @@ class TestBookingTime(TestGiftableToken):
         self.address = to_checksum_address(r['contract_address'])
         self.booking_address = self.address
         self.caller = TimeBooking(self.chain_spec, PERIOD_LEAPYEAR, PERIOD_HALFHOUR, start_seconds=d)
+
+
+    def test_end(self):
+        c = TimeBooking(self.chain_spec, PERIOD_LEAPYEAR, PERIOD_HALFHOUR)
+        o = c.expires(self.booking_address, sender_address=self.accounts[0])
+        r = self.rpc.do(o)
+        expect = self.start + datetime.timedelta(seconds=PERIOD_LEAPYEAR * PERIOD_HALFHOUR)
+        expect_seconds = expect.timestamp() + 1
+        self.assertEqual(int(r, 16), expect_seconds)
 
 
     def test_uneven(self):

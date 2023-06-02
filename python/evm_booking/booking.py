@@ -37,19 +37,21 @@ class Booking(TxFactory):
     __abi = None
     __bytecode = None
 
-    def constructor(self, sender_address, token_address, cap, tx_format=TxFormat.JSONRPC, version=None):
-        code = self.cargs(token_address, cap, version=version)
+    def constructor(self, sender_address, token_address, cap, expiry, tx_format=TxFormat.JSONRPC, version=None):
+        code = self.cargs(token_address, cap, expiry, version=version)
         tx = self.template(sender_address, None, use_nonce=True)
         tx = self.set_code(tx, code)
         return self.finalize(tx, tx_format)
 
 
     @staticmethod
-    def cargs(token_address, cap, version=None):
+    def cargs(token_address, cap, expiry, version=None):
+        expiry_timestamp = int(expiry.timestamp())
         code = Booking.bytecode(version=version)
         enc = ABIContractEncoder()
         enc.address(token_address)
         enc.uint256(cap)
+        enc.uint256(expiry_timestamp)
         args = enc.get()
         code += args
         logg.debug('constructor code: ' + args)
@@ -59,7 +61,6 @@ class Booking(TxFactory):
     @staticmethod
     def gas(code=None):
         return 4000000
-
 
 
     @staticmethod
@@ -118,7 +119,6 @@ class Booking(TxFactory):
         return tx
 
 
-
     def raw(self, contract_address, count=0, offset=0, sender_address=ZERO_ADDRESS, id_generator=None, height=BlockSpec.LATEST):
         j = JSONRPCRequest(id_generator)
         o = j.template()
@@ -145,6 +145,22 @@ class Booking(TxFactory):
         o['method'] = 'eth_call'
         enc = ABIContractEncoder()
         enc.method('capacity')
+        data = add_0x(enc.get())
+        tx = self.template(sender_address, contract_address)
+        tx = self.set_code(tx, data)
+        o['params'].append(self.normalize(tx))
+        height = to_blockheight_param(height)
+        o['params'].append(height)
+        o = j.finalize(o)
+        return o
+
+
+    def expires(self, contract_address, sender_address=ZERO_ADDRESS, id_generator=None, height=BlockSpec.LATEST):
+        j = JSONRPCRequest(id_generator)
+        o = j.template()
+        o['method'] = 'eth_call'
+        enc = ABIContractEncoder()
+        enc.method('expires')
         data = add_0x(enc.get())
         tx = self.template(sender_address, contract_address)
         tx = self.set_code(tx, data)
