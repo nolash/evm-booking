@@ -139,6 +139,22 @@ class Booking(TxFactory):
         return o
 
 
+    def capacity(self, contract_address, sender_address=ZERO_ADDRESS, id_generator=None, height=BlockSpec.LATEST):
+        j = JSONRPCRequest(id_generator)
+        o = j.template()
+        o['method'] = 'eth_call'
+        enc = ABIContractEncoder()
+        enc.method('capacity')
+        data = add_0x(enc.get())
+        tx = self.template(sender_address, contract_address)
+        tx = self.set_code(tx, data)
+        o['params'].append(self.normalize(tx))
+        height = to_blockheight_param(height)
+        o['params'].append(height)
+        o = j.finalize(o)
+        return o
+
+
     @classmethod
     def parse_raw(self, v):
         v = strip_0x(v)

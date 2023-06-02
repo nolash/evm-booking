@@ -152,7 +152,7 @@ contract ERC20Book {
 		int256 c;
 		uint256[2] memory r;
 
-		c = (int256(bit) - 1) / 8;
+		c = int256(bit) / 8;
 
 		r[0] = uint256(c);
 		r[1] = bit % 8;
@@ -161,15 +161,25 @@ contract ERC20Book {
 
 	function raw(uint256 _count, uint256 _offset) public view returns (bytes memory) {
 		bytes memory r;
+		uint256[2] memory c;
+		uint256 l_offset;
+		uint256 l_count;
 
 		if (_count == 0) {
-			_count = totalSupply;
+			_count = capacity / 8;
 		}
-		require(_offset + _count <= totalSupply, "ERR_RANGE");
+		require(_offset % 8 == 0, "ERR_BOUNDARY");
 
-		r = new bytes(_count);
-		for (uint256 i = 0; i < _count; i++) {
-			r[i] = slots[i + _offset] | sharedSlots[i + _offset];
+		c = getPos(_offset);
+		l_offset = uint256(c[0]);
+
+		l_count = _count / 8;
+		if (uint8(c[1]) > 1) {
+			l_count += 1;
+		}
+		r = new bytes(l_count);
+		for (uint256 i = 0; i < l_count; i++) {
+			r[i] = slots[i + l_offset] | sharedSlots[i + l_offset];
 		}
 		return r;
 	}
