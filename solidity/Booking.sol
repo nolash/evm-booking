@@ -14,9 +14,17 @@ contract ERC20Book {
 	bytes sharedSlots;
 	uint256 public capacity;
 	uint256 public totalSupply;
+	uint256 public originalTokenSupply;
 	uint256 public shareCount;
 	mapping ( address => uint256 ) shares;
 	mapping ( address => bool ) writers;
+
+	// Implements Seal
+	event SealStateChange(bool indexed _final, uint256 _sealState);
+
+	uint256 public sealState;
+	uint8 constant WRITER_STATE = 1;
+	uint256 constant public maxSealState = 1;
 
 	constructor (address _token, uint256 _resolution) {
 		require(_resolution > 0 && _resolution < (1 << 128), "ERR_NONSENSE");
@@ -28,11 +36,29 @@ contract ERC20Book {
 		capacity = _resolution;
 		totalSupply = capacity;
 		token = _token;
+		originalTokenSupply = tokenSupply();
 		owner = msg.sender;
+	}
+
+	function seal(uint256 _state) public returns(uint256) {
+		require(_state < maxSealState + 1, 'ERR_INVALID_STATE');
+		require(_state & sealState == 0, 'ERR_ALREADY_LOCKED');
+		sealState |= _state;
+		emit SealStateChange(sealState == maxSealState, sealState);
+		return uint256(sealState);
+	}
+
+	function isSealed(uint256 _state) public view returns(bool) {
+		require(_state < maxSealState);
+		if (_state == 0) {
+			return sealState == maxSealState;
+		}
+		return _state & sealState == _state;
 	}
 
 	// Implements Writer
 	function addWriter(address _writer) public returns (bool) {
+		require(!isSealed(WRITER_STATE), "ERR_SEALED");
 		require(msg.sender == owner, "ERR_AXX");
 		writers[_writer] = true;
 		return true;
@@ -40,6 +66,7 @@ contract ERC20Book {
 
 	// Implements Writer
 	function removeWriter(address _writer) public returns (bool) {
+		require(!isSealed(WRITER_STATE), "ERR_SEALED");
 		require(msg.sender == owner || msg.sender == _writer, "ERR_AXX");
 		writers[_writer] = false;
 		return true;
@@ -52,13 +79,16 @@ contract ERC20Book {
 
 	function depositFor(address _spender) public returns (int256) {
 		uint256 l_limit;
+		uint256 l_unit;
 		int256 l_value;
 		bool r;
 		bytes memory v;
 		address l_sender;
 		address l_receiver;
 
-		l_limit = shareLimit();	
+		l_unit = unitValue();	
+		//return shareCount * l_unit;
+		l_limit = shareCount * l_unit;
 		if (l_limit == shares[_spender]) {
 			return 0;
 		}
@@ -75,6 +105,8 @@ contract ERC20Book {
 
 		(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', l_sender, l_receiver, uint256(l_value)));
 		require(r, "ERR_TOKEN");
+		r = abi.decode(v, (bool));
+		require(r, "ERR_TRANSFER");
 
 		shares[_spender] = l_limit;
 		return l_value;
@@ -84,14 +116,15 @@ contract ERC20Book {
 		return depositFor(msg.sender);
 	}
 
-	function shareLimit() internal returns(uint256) {
+	function unitValue() internal returns(uint256) {
 		uint256 l_supply;
 		uint256 l_unit;
 
 		l_supply = tokenSupply();
+		require(l_supply == originalTokenSupply, "ERR_SUPPLY_CHANGED");
 		require(l_supply >= totalSupply, "ERR_SUPPLY_UNDERFLOW");
 		l_unit = l_supply / totalSupply;
-		return shareCount * l_unit;
+		return l_unit;
 	}
 
 	function tokenSupply() internal returns (uint256) {
@@ -107,6 +140,16 @@ contract ERC20Book {
 	}
 
 	function consume(uint256 _offset, uint256 _count) public {
+		bool r;
+		bytes memory v;
+		uint256 l_value;
+
+		l_value = unitValue() * _count;
+		(r, v) = token.call(abi.encodeWithSignature('transferFrom(address,address,uint256)', msg.sender, this, l_value));
+		require(r, "ERR_TOKEN");
+		r = abi.decode(v, (bool));
+		require(r, "ERR_TRANSFER");
+
 		reserve(_offset, _count, false);
 	}
 

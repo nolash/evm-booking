@@ -39,6 +39,11 @@ class TimeBooking(Booking):
         return super(TimeBooking, self).share(contract_address, sender_address, offset, count)
 
 
+    def consume_date(self, contract_address, sender_address, start_date, count, ref_date=None, tx_format=TxFormat.JSONRPC, id_generator=None):
+        offset = self.offset_from_date(start_date, count, ref_date=ref_date)
+        return super(TimeBooking, self).consume(contract_address, sender_address, offset, count)
+
+
     def offset_from_date(self, start_date, count, ref_date=None):
         if ref_date == None:
             ref_date = self.start
