@@ -4,3 +4,4 @@ build/
 *.egg-info
 solidity/*.json
 solidity/*.bin
+python/dist/

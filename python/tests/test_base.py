@@ -93,6 +93,19 @@ class TestBookingBase(TestBooking):
         r = self.rpc.do(o)
         self.assertEqual(r['status'], 1)
 
+        (tx_hash_hex,o ) = c.add_writer(self.address, self.accounts[0], self.alice)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
+
+        nonce_oracle = RPCNonceOracle(self.alice, conn=self.rpc)
+        c = Booking(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
+        (tx_hash_hex, o) = c.share(self.address, self.alice, 133, 7)
+        self.rpc.do(o)
+        o = receipt(tx_hash_hex)
+        r = self.rpc.do(o)
+        self.assertEqual(r['status'], 1)
 
     def test_deposit_excess(self):
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
@@ -180,6 +193,12 @@ class TestBookingBase(TestBooking):
 
 
     def test_expire(self):
+        c = Booking(self.chain_spec)
+        o = c.expires(self.address, sender_address=self.accounts[0])
+        r = self.rpc.do(o)
+        expire_timestamp = int(self.booking_expire.timestamp())
+        self.assertEqual(int(r, 16), expire_timestamp)
+
         nonce_oracle = RPCNonceOracle(self.accounts[0], conn=self.rpc)
         c = ERC20(self.chain_spec, signer=self.signer, nonce_oracle=nonce_oracle)
         (tx_hash_hex, o) = c.approve(self.token_address, self.accounts[0], self.address, self.initial_supply)

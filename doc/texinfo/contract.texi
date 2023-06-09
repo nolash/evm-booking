@@ -1,0 +1,66 @@
+@chapter Smart contract
+
+When the smart contract is published, it is bound to:
+
+@itemize
+@item The ERC20 token that will be used to spend serial units.
+@item The amount of serial units.
+@item Timestamp until when serial units can be reserved and spent.
+@end itemize
+
+The supply of the ERC20 token will be read and stored, and used to calculate shares for collective use.
+
+@strong{The supply of the ERC20 token must not change after binding it to the contract}.
+
+
+@section Interface
+
+The contract interface consists of three main methods.
+
+@table @code
+@item consume
+Will spend serial units in the contract, and invoke @code{ERC20.transferFrom} to cover those units.
+@item share
+Reserve serial units for collective use. Requires all token holders to collectively deposit a corresponding share of the total supply. 
+@item deposit(For)
+Manually synchronise deposits to cover the time currently reserved for collective use.
+@end table
+
+
+@section Expiration
+
+After expiration, the shares of the collective use are considered finalized, and can be read out from the contract.
+
+
+@section Raw output
+
+The @code{raw} method returns the bit field representing the state of individual serial slots.
+
+
+@subsection Example
+
+Let the total of time slots be 50.
+
+Slots (inclusive, zero-indexed) 13-30 have been @emph{spent} (@code{consume}) and 249-255 have been @emph{reserved} (@code{share}).
+
+Calling @code{raw(11, 257)} will yield a virtual bit field (lowest index left) as follows:
+
+@verbatim
+00111111 11111111 11110000 00000000 (bytes 0-4)
+[...]
+00000000 00000011 11111000 00000000 (bytes 28-31)
+0 (bit 257)
+@end verbatim
+
+The ABI encoded return value will be, grouped by word:
+
+@verbatim
+0000000000000000000000000000000000000000000000000000000000000020
+0000000000000000000000000000000000000000000000000000000000000021
+008f300000000000000000000000000000000000000000ffffffffffffffff3f
+0000000000000000000000000000000000000000000000000000000000000000
+@end verbatim
+
+The bit field is read word for word, then byte-for-byte from right to left.
+
+Note how it merges both the @emph{spent} and @emph{reserved} slots.

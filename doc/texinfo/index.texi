@@ -1,0 +1,4 @@
+@top evm-booking
+
+@include intro.texi
+@include contract.texi

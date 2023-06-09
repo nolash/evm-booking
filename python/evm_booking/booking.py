@@ -24,6 +24,8 @@ from hexathon import (
     strip_0x,
 )
 from chainlib.eth.cli.encode import CLIEncoder
+from eth_writer import EthWriter
+from eth_expire import EthExpire
 
 # local imports
 from evm_booking.data import data_dir
@@ -32,7 +34,7 @@ logg = logging.getLogger()
 
 
 
-class Booking(TxFactory):
+class Booking(EthWriter, EthExpire):
 
     __abi = None
     __bytecode = None
@@ -145,22 +147,6 @@ class Booking(TxFactory):
         o['method'] = 'eth_call'
         enc = ABIContractEncoder()
         enc.method('capacity')
-        data = add_0x(enc.get())
-        tx = self.template(sender_address, contract_address)
-        tx = self.set_code(tx, data)
-        o['params'].append(self.normalize(tx))
-        height = to_blockheight_param(height)
-        o['params'].append(height)
-        o = j.finalize(o)
-        return o
-
-
-    def expires(self, contract_address, sender_address=ZERO_ADDRESS, id_generator=None, height=BlockSpec.LATEST):
-        j = JSONRPCRequest(id_generator)
-        o = j.template()
-        o['method'] = 'eth_call'
-        enc = ABIContractEncoder()
-        enc.method('expires')
         data = add_0x(enc.get())
         tx = self.template(sender_address, contract_address)
         tx = self.set_code(tx, data)
