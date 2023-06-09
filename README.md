@@ -20,7 +20,8 @@ comfortable hammock on the beach.
 
 Unfortunately, the beach is not accessible all the time, because local
 technocrat authorities have decided to close the beach for the public
-every day from 6pm to 6am on every weekday.
+every day from 6pm to 6am on every weekday, to protect people from their
+own pleasure-seeking.
 
 Their trusted friend Trent publishes the ‘`evm-booking`’ contract, to
 manage hammock time for the coming month.
@@ -29,7 +30,8 @@ The month has 30 days. The period starts on a wednesday (6am) and ends
 on a friday (6am).
 
 The period has 22 weekdays and 8 weekend days. This translates to
-$22 * 12) + (8 * 24) = 264 + 192 = 456$ hours of available hammock time.
+$(22 * 12) + (8 * 24) = 264 + 192 = 456$ hours of available hammock
+time.
 
 456.00 ‘`TIME`’ vouchers are minted (two decimal places).
 
